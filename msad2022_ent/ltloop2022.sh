@@ -25,8 +25,8 @@ usage_exit() {
         exit 1
 }
 
-SRCDIR=${ETROBO_HRP3_WORKSPACE}/2022base_ent
-DSTDIR=${ETROBO_ROOT}/workspace/work
+SRCDIR=${ETROBO_HRP3_WORKSPACE}/msad2022_ent
+DSTDIR=${ETROBO_ROOT}/workspace/msad2022_ent/work
 
 MAKELOG="makelog"
 LOOPLOG="lplog"
@@ -39,18 +39,18 @@ cd $ETROBO_ROOT
 
 #処理打ち切り時間がパラメータにあったらセット
 if [ $# -eq 0 ];then
-    MAXTIME=50
+    MAXTIME=30
 else
     MAXTIME=$1
 fi
 
 # 最初に1回だけmake
-make app=2022base_ent sim 2>&1 | tee ${DSTDIR}/${MAKELOG}_${DT}.${LOGEXT}
+make app=msad2022_ent sim 2>&1 | tee ${DSTDIR}/${MAKELOG}_${DT}.${LOGEXT}
 
 # 処理ループ
-for ((ll = 0; ll <= 3; ll++)) {
-    for ((rot = 0; rot <= 3; rot++)) {
-        for ((lsp = 0; lsp <= 3; lsp++)) {
+for ((ll = 0; ll <= 1; ll++)) {
+    for ((rot = 0; rot <= 1; rot++)) {
+        for ((lsp = 0; lsp <= 1; lsp++)) {
 # シミュレータ起動と初期位置設定
             sim ctl pos 2 0 -15.5 0
             sleep 5
@@ -59,7 +59,7 @@ for ((ll = 0; ll <= 3; ll++)) {
             curl -X POST -H "Content-Type: application/json" -d "{\"EnvLightIntensityLevel\":"0",\"EnvLightRotation\":"0",\"LSpotLight\":"0",\"RSpotLight\":"0"}" http://localhost:54000
 #            sleep 3
 # アプリを実行しプロセスIDを記録
-            asp 2022base_ent &
+            asp msad2022_ent &
 #            PID=`asp check l`
             PID=`asp check`
     echo $PID
