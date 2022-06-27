@@ -78,7 +78,7 @@ for ((ll = 1; ll <= LOOPCNT; ll++)) {
     echo $PID
 # シミュレータ PREPAREモード
     sim ctl prepare
-    sleep 1
+    sleep 3
 # シミュレータ GOモード
     sim ctl go &
 # 処理打ち切り時間を越えたらアプリプロセスの動作確認、プロセスが居たら殺す
