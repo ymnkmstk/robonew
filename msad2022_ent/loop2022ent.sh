@@ -69,7 +69,7 @@ for ((ll = 1; ll <= LOOPCNT; ll++)) {
     sleep 1
 # 光源値設定
 #    curl -X POST -H "Content-Type: application/json" -d "{\"EnvLightIntensityLevel\":$ll,\"EnvLightRotation\":$rot,\"LSpotLight\":$lsp,\"RSpotLight\":"0"}" http://localhost:54000
-#    curl -X POST -H "Content-Type: application/json" -d "{\"EnvLightIntensityLevel\":"0",\"EnvLightRotation\":"0",\"LSpotLight\":"0",\"RSpotLight\":"0"}" http://localhost:54000
+#    curl -X POST -H "Content-Type: application/json" -d "{\"EnvLightIntensityLevel\":"0",\"EnvLightRotation\":"0",\"LSpotLight\":"0",\"RSpotLight\":"0"}" http://172.27.160.1:54000
 #    sleep 3
 # アプリを実行しプロセスIDを記録
     asp msad2022_ent &
@@ -86,9 +86,9 @@ for ((ll = 1; ll <= LOOPCNT; ll++)) {
     CNT=0
     CNT=`ps -ef | grep $PID | wc -l`
     if [ $CNT -ne 0 ]; then
-        kill $PID
+        kill $PID 2>&1 > /dev/null
     fi
-    wait $PID
+    wait $PID 2>&1 > /dev/null
 # 終了処理
     echo "stop"
     sleep 1
