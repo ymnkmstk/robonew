@@ -98,7 +98,7 @@ for ((ll = 1; ll <= LOOPCNT; ll++)) {
 }
 
 #集計
-awk -f ${SRCDIR}/lpprt2022.awk ${DSTDIR}/*.${CSVEXT} > ${DSTDIR}/${DT}.${CSVEXT}
+awk -f ${SRCDIR}/lpprt2022.awk ${DSTDIR}/lp_*.${CSVEXT} > ${DSTDIR}/${DT}.${CSVEXT}
 cd ${DSTDIR}
 tar -zcvf ${DT}.tar.gz lp_*.csv
 rm  lp_*.csv
