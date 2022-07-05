@@ -65,8 +65,8 @@ echo "LOOPCNT="$LOOPCNT
 # 処理ループ
 for ((ll = 1; ll <= LOOPCNT; ll++)) {
 # シミュレータ起動と初期位置設定
-    sim ctl pos 2 0 -15.5 0
-    sleep 1
+#    sim ctl pos 2 0 -15.5 0
+#    sleep 1
 # 光源値設定
 #    curl -X POST -H "Content-Type: application/json" -d "{\"EnvLightIntensityLevel\":$ll,\"EnvLightRotation\":$rot,\"LSpotLight\":$lsp,\"RSpotLight\":"0"}" http://localhost:54000
 #    curl -X POST -H "Content-Type: application/json" -d "{\"EnvLightIntensityLevel\":"0",\"EnvLightRotation\":"0",\"LSpotLight\":"0",\"RSpotLight\":"0"}" http://172.27.160.1:54000
