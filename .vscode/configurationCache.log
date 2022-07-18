@@ -1,0 +1,1 @@
+{"buildTargets":["app","clean","img","prepare-obj-folder","realclean","upload","uploadimg","usage"],"launchTargets":[],"customConfigurationProvider":{"workspaceBrowse":{"browsePath":[],"compilerArgs":[]},"fileIndex":[]}}
