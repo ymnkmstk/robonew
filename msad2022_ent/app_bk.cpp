@@ -1,7 +1,6 @@
 /*
     app.cpp
-
-    Copyright © 2022 MSAD Mode2E. All rights reserved.
+    Copyright © 2022 MSAD Mode2P. All rights reserved.
 */
 #include "BrainTree.h"
 /*
@@ -30,7 +29,6 @@ SRLF*           srlfL;
 FilteredMotor*  leftMotor;
 SRLF*           srlfR;
 FilteredMotor*  rightMotor;
-Motor*          tailMotor;
 Motor*          armMotor;
 Plotter*        plotter;
 
@@ -55,6 +53,21 @@ public:
         ev3clock->reset();
         _log("clock reset.");
         ev3_led_set_color(LED_GREEN);
+        return Status::Success;
+    }
+};
+
+/*
+    usage:
+    ".leaf<StopNow>()"
+    is to stop the robot.
+*/
+class StopNow : public BrainTree::Node {
+public:
+    Status update() override {
+        leftMotor->setPWM(0);
+        rightMotor->setPWM(0);
+        _log("robot stopped.");
         return Status::Success;
     }
 };
@@ -509,46 +522,6 @@ private:
 };
 
 /*
-    usage:
-    ".leaf<SetTailPosition>(target_degree, pwm)"
-    is to shift the robot tail to the specified degree by the spefied power.
-*/
-class SetTailPosition : public BrainTree::Node {
-public:
-    SetTailPosition(int32_t target_degree, int pwm) : targetDegree(target_degree),pwmT(pwm) {
-        updated = false;
-    }
-    Status update() override {
-        int32_t currentDegree = tailMotor->getCount();
-        if (!updated) {
-            _log("ODO=%05d, Tail position is moving from %d to %d.", plotter->getDistance(), currentDegree, targetDegree);
-            if (currentDegree == targetDegree) {
-                return Status::Success; /* do nothing */
-            } else if (currentDegree < targetDegree) {
-                clockwise = 1;
-            } else {
-                clockwise = -1;
-            }
-            tailMotor->setPWM(clockwise * pwmT);
-            updated = true;
-            return Status::Running;
-        }
-        if (((clockwise ==  1) && (currentDegree >= targetDegree)) ||
-            ((clockwise == -1) && (currentDegree <= targetDegree))) {
-            _log("ODO=%05d, Tail position set to %d.", plotter->getDistance(), currentDegree);
-            tailMotor->setPWM(0);
-            return Status::Success;
-        } else {
-            return Status::Running;
-        }
-    }
-private:
-    int32_t targetDegree;
-    int pwmT, clockwise;
-    bool updated;
-};
-
-/*
     === NODE CLASS DEFINITION ENDS HERE ===
 */
 
@@ -565,16 +538,17 @@ void task_activator(intptr_t tskid) {
 /* The main task */
 void main_task(intptr_t unused) {
     bt = ev3_serial_open_file(EV3_SERIAL_BT);
-    assert(bt != NULL);
+    // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
+    //assert(bt != NULL);
     /* create and initialize EV3 objects */
     ev3clock    = new Clock();
     touchSensor = new TouchSensor(PORT_1);
-    sonarSensor = new SonarSensor(PORT_3);
+    // temp fix 2022/6/20 W.Taniguchi, new SonarSensor() blocks apparently
+    //sonarSensor = new SonarSensor(PORT_3);
     colorSensor = new FilteredColorSensor(PORT_2);
     gyroSensor  = new GyroSensor(PORT_4);
     leftMotor   = new FilteredMotor(PORT_C);
     rightMotor  = new FilteredMotor(PORT_B);
-    tailMotor   = new Motor(PORT_D);
     armMotor    = new Motor(PORT_A);
     plotter     = new Plotter(leftMotor, rightMotor, gyroSensor);
 
@@ -596,7 +570,6 @@ void main_task(intptr_t unused) {
     srlfR = new SRLF(0.0);
     rightMotor->setPWMFilter(srlfR);
     rightMotor->setPWM(0);
-    tailMotor->reset();
     armMotor->reset();
 
 /*
@@ -607,9 +580,10 @@ void main_task(intptr_t unused) {
     /* robot starts when touch sensor is turned on */
     tr_calibration = (BrainTree::BehaviorTree*) BrainTree::Builder()
         .composite<BrainTree::MemSequence>()
-            .decorator<BrainTree::UntilSuccess>()
-                .leaf<IsTouchOn>()
-            .end()
+            // temp fix 2022/6/20 W.Taniguchi, as no touch sensor available on RasPike
+            //.decorator<BrainTree::UntilSuccess>()
+            //    .leaf<IsTouchOn>()
+            //.end()
             .leaf<ResetClock>()
         .end()
         .build();
@@ -617,7 +591,6 @@ void main_task(intptr_t unused) {
 /*
     DEFINE ROBOT BEHAVIOR AFTER START
     FOR THE RIGHT AND LEFT COURSE SEPARATELY
-
     #if defined(MAKE_RIGHT)
     #else
     #endif
@@ -629,44 +602,156 @@ void main_task(intptr_t unused) {
 
 #else /* BEHAVIOR FOR THE LEFT COURSE STARTS HERE */
     tr_run = (BrainTree::BehaviorTree*) BrainTree::Builder()
+
         .composite<BrainTree::ParallelSequence>(1,2)
             .leaf<IsBackOn>()
+        
             .composite<BrainTree::MemSequence>()
+    /*
+    first trace
+    */ 
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(15000000)
-                   .leaf<TraceLine>(50, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                   .leaf<IsTimeEarned>(1300000)
+                   .leaf<TraceLine>(60, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    first turn right
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1190000)
+                   .leaf<RunAsInstructed>(60,25, 0.0)
+                .end()
+    /*
+    after turn right,run
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1200000)
+                   .leaf<RunAsInstructed>(100,100, 0.0)
+                .end()
+    /*
+    after run,turn right
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1000000)
+                   .leaf<RunAsInstructed>(60,25, 0.0)
+                .end()
+    /*
+    color detect
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(50,50, 0.0)
+                .end()
+    /*
+    rine trace while
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(2500000)
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    go straight
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(800000)
+                   .leaf<RunAsInstructed>(100,100, 0.0)
+                .end()
+    /*
+    go till line detect
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(1200000)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(100,100, 0.0)
+                .end()
+    /*
+    if don,t detect turn adjust a little
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(900000)
+                   .leaf<RunAsInstructed>(60,30, 0.0)
+                .end()
+    /*
+    if don,t detect, try to detect again 
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(60,30, 0.0)
+                .end()
+    /*
+    rine tlace while
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(5500000)
+                   .leaf<TraceLine>(SPEED_HIGH, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    after passing 3rd gate, go straight while
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_JETBLACK)
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+    /*
+    go till color detect
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsDistanceEarned>(30)
+                   .leaf<RunAsInstructed>(50,50, 0.0)
                 .end()
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(5000000)
-                   .leaf<TraceLine>(50, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                   .leaf<IsDistanceEarned>(30)
+                   .leaf<RunAsInstructed>(50,60, 0.0)
+                .end()
+    /*
+    if don,t detect, try to detect
+    */ 
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(100,100, 0.0)
+                .end()
+    
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsTimeEarned>(3000000)
+                   .leaf<TraceLine>(SPEED_HIGH, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsColorDetected>(CL_JETBLACK)
+                   .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+                
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .leaf<IsDistanceEarned>(20)
+                   .leaf<RunAsInstructed>(50,50, 0.0)
                 .end()
                 .composite<BrainTree::ParallelSequence>(1,2)
-                   .leaf<IsTimeEarned>(5000000)
-                   .leaf<TraceLine>(50, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_OPPOSITE)
+                   .leaf<IsColorDetected>(CL_BLACK)
+                   .leaf<RunAsInstructed>(50,60, 0.0)
                 .end()
-            .end()    
+
+                .composite<BrainTree::ParallelSequence>(1,2)
+                   .composite<BrainTree::MemSequence>()
+                      .leaf<IsColorDetected>(CL_BLACK)
+                      .leaf<IsColorDetected>(CL_BLUE)
+                   .end()
+                   .leaf<TraceLine>(SPEED_HIGH, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
+                .end()
+                
+            .end()
+
         .end()
         .build();
 
     tr_block = (BrainTree::BehaviorTree*) BrainTree::Builder()
-        .composite<BrainTree::ParallelSequence>(1,2)
-            .leaf<IsBackOn>()
-            .composite<BrainTree::MemSequence>()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsColorDetected>(CL_GREEN)
-                    .leaf<TraceLine>(SPEED_NORM, GS_TARGET, P_CONST, I_CONST, D_CONST, 0.0, TS_NORMAL)
-                .end()
-                .composite<BrainTree::ParallelSequence>(1,2)
-                    .leaf<IsTimeEarned>(1880000)
-                    .leaf<RunAsInstructed>(0, 20, 0.0)
-                .end()
-                .leaf<SetArmPosition>(ARM_INITIAL_ANGLE, ARM_SHIFT_PWM)
-                .composite<BrainTree::ParallelSequence>(1,3)
-                    .leaf<IsSonarOn>(300)
-                    .leaf<IsTimeEarned>(7290000)
-                    .leaf<RunAsInstructed>(25, 25, 0.5)
-                .end()
+        .composite<BrainTree::MemSequence>()
+            .leaf<StopNow>()
+            .leaf<IsTimeEarned>(3000000) // wait 3 seconds
+            .composite<BrainTree::ParallelSequence>(1,3)
+                .leaf<IsTimeEarned>(10000000) // break after 10 seconds
+                .leaf<RunAsInstructed>(-50,-25,0.5)
             .end()
+            .leaf<StopNow>()
         .end()
         .build();
 
@@ -704,7 +789,6 @@ void main_task(intptr_t unused) {
     delete lpf_r;
     delete plotter;
     delete armMotor;
-    delete tailMotor;
     delete rightMotor;
     delete leftMotor;
     delete gyroSensor;
@@ -713,7 +797,8 @@ void main_task(intptr_t unused) {
     delete touchSensor;
     delete ev3clock;
     _log("being terminated...");
-    fclose(bt);
+    // temp fix 2022/6/20 W.Taniguchi, as Bluetooth not implemented yet
+    //fclose(bt);
 #if defined(MAKE_SIM)    
     ETRoboc_notifyCompletedToSimulator();
 #endif

@@ -102,7 +102,7 @@ extern Plotter*     plotter;
 #define LOG_INTERVAL            0
 #endif
 
-#define GS_TARGET               45      /* was 47 for 2020 program                 */
+#define GS_TARGET               47      /* was 47 for 2020 program                 */
 #define GS_TARGET_SLOW          25
 #define SONAR_ALERT_DISTANCE    100     /* in millimeter                           */
 #define ARM_INITIAL_ANGLE       -58
