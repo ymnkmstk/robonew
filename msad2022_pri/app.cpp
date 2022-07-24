@@ -263,13 +263,13 @@ public:
 
         switch(color){
             case CL_JETBLACK:
-                if (cur_rgb.r <=35 && cur_rgb.g <=35 && cur_rgb.b <=50) { 
+                if (cur_rgb.r <=10 && cur_rgb.g <=10 && cur_rgb.b <=10) { 
                     _log("ODO=%05d, CL_JETBLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
                 break;
             case CL_BLACK:
-                if (cur_rgb.r <=50 && cur_rgb.g <=45 && cur_rgb.b <=60) {
+                if (cur_rgb.r <=50 && cur_rgb.g <=45 && cur_rgb.b <=70) {
                     _log("ODO=%05d, CL_BLACK detected.", plotter->getDistance());
                     return Status::Success;
                 }
